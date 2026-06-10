@@ -1,0 +1,50 @@
+# configs/base.yaml — the shared protocol. Everything comparable lives here;
+# per-model configs (bpr.yaml, deepfm.yaml) add only model hyperparameters.
+# Validated against RecBole 1.2.0.
+
+seed: 2020
+reproducibility: true
+
+# Field roles. Defaults already match our atomic columns; listed for clarity.
+USER_ID_FIELD: user_id
+ITEM_ID_FIELD: item_id
+RATING_FIELD: rating
+TIME_FIELD: timestamp
+
+# Selective column loading (side-info ON form). run_one.py toggles the user:/item:
+# lines on/off per run by REPLACING this dict — a run with a side "off" omits that
+# line entirely, so the model is genuinely ID-only on that side (not zeroed).
+# BPR ignores user/item columns regardless; DeepFM consumes them.
+load_col:
+  inter: [user_id, item_id, rating, timestamp]
+  user:  [user_id, age, gender, occupation]
+  item:  [item_id, genre, release_year]
+
+# explicit -> implicit for ranking: keep only ratings >= 4 as positives.
+# Filtering happens at load time (before unused_col drop), so this still applies
+# even though rating is dropped from model input below.
+val_interval:
+  rating: "[4,inf)"
+unused_col:
+  inter: [rating, timestamp]
+
+# Evaluation protocol (frozen across every run).
+eval_args:
+  split: {RS: [0.8, 0.1, 0.1]}
+  order: RO            # random; switch to TO/LS only if adding sequential models
+  group_by: user
+  mode: full           # full ranking — NEVER sampled negatives for the paper table
+metrics: [NDCG, Hit, Precision]
+topk: [1, 3]
+valid_metric: NDCG@3
+
+# Training budget (early stopping guards against the full epoch count).
+epochs: 100
+stopping_step: 10
+eval_step: 1
+
+# Compute. CPU for smoke/iteration on Apple Silicon; flip use_gpu + set device per
+# machine for the final fixed-CUDA numbers (backends differ — see plan §3).
+use_gpu: False
+show_progress: False
+checkpoint_dir: saved/

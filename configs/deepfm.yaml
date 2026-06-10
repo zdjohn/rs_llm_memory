@@ -1,0 +1,23 @@
+# DeepFM — user + item features incl. feature interactions. Context-aware (CTR) model:
+# POINTWISE, loss is hardcoded BCEWithLogitsLoss (no loss_type key). Full-ranking still
+# works via RecBole's generic per-item predict fallback (slower than BPR's matmul).
+model: DeepFM
+embedding_size: 10
+mlp_hidden_size: [128, 128, 128]
+dropout_prob: 0.2
+learning_rate: 0.001
+
+# REQUIRED for ranking: negative sampling generates the `label` field (1.0 pos / 0.0 neg)
+# that BCE training consumes. Without it there are no negatives and no label.
+train_neg_sample_args:
+  distribution: uniform
+  sample_num: 1
+  dynamic: False
+
+# Full-sort eval expands each user against every item (repeat_interleave); keep the eval
+# batch modest to bound memory on the fallback path.
+eval_batch_size: 256
+
+# age & release_year are TOKEN-typed (categorical) in our atomic files, so DeepFM embeds
+# them automatically as categorical side-info. `numerical_features` is intentionally unset
+# (it only applies to FLOAT-typed fields).

@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# Conda/venv
+.venv/
+env/
+
+# RecBole runtime artifacts
+saved/
+log/
+log_tensorboard/
+*.pth
+
+# Raw dataset dumps (keep generated atomic files; ignore the bulky raw extract)
+data/ml-100k/raw/
+data/lastfm/raw/
+*.zip
+
+# MLflow local artifact store (can be large; metadata lives in Postgres)
+mlflow-docker/mlartifacts/
+mlflow-docker/mlruns/
+
+# OS
+.DS_Store
+
+# Claude Code session state
+.claude/

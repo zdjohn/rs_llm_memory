@@ -1,0 +1,4 @@
+model,dataset,seed,user_feats,item_feats,embedding_size,learning_rate,epochs,ndcg_at_3,hit_at_3,precision_at_3,ndcg_at_1,hit_at_1,precision_at_1,train_time_sec,git_commit,run_id
+DeepFM,ml-100k,2020,on,on,10,0.001,1,0.0632,0.1592,0.0559,0.0648,0.0648,0.0648,1.9246551990509033,unknown,ac4a2ec1fea6433196ecb764c492e5d9
+BPR,ml-100k,2020,off,off,64,0.001,1,0.0035,0.0096,0.0032,0.0021,0.0021,0.0021,0.12636280059814453,unknown,08c4a9c8d7624844a3f2010fd17a29a8
+BPR,ml-100k,2020,off,off,64,0.001,1,0.0035,0.0096,0.0032,0.0021,0.0021,0.0021,0.11509299278259277,unknown,3bd3e2163c2a449fb0237fb974dbb139

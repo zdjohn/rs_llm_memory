@@ -1,0 +1,53 @@
+services:
+  postgres:
+    image: postgres:16
+    # No fixed container_name: avoids collisions with other compose stacks on this host
+    # (e.g. the agents-memory project also names a container "mlflow-server").
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mlflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mlflow}
+      POSTGRES_DB: ${POSTGRES_DB:-mlflow}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mlflow} -d ${POSTGRES_DB:-mlflow}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    # DB port not exposed to host by default — only the MLflow server reaches it
+    # over the compose network. Uncomment to inspect the DB directly:
+    # ports:
+    #   - "5432:5432"
+
+  mlflow:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      # Host 5000 is taken by macOS ControlCenter (AirPlay) and 5001 by another stack,
+      # so the UI/API is published on 5002. Container still listens on 5000.
+      - "5002:5000"
+    volumes:
+      # Physical artifact store. With --serve-artifacts the HOST client uploads
+      # through the server (HTTP proxy), so it never needs filesystem access here.
+      - ./mlartifacts:/mlartifacts
+    # The backend-store URI is interpolated by Compose from the SAME .env values
+    # Postgres uses (POSTGRES_*), which Compose CAN see. We deliberately do NOT
+    # reference a service `environment:` var in `command:` — Compose does not
+    # substitute those, which silently launches mlflow with an empty store URI.
+    command: >
+      mlflow server
+      --backend-store-uri postgresql://${POSTGRES_USER:-mlflow}:${POSTGRES_PASSWORD:-mlflow}@postgres:5432/${POSTGRES_DB:-mlflow}
+      --serve-artifacts
+      --artifacts-destination /mlartifacts
+      --default-artifact-root mlflow-artifacts:/
+      --host 0.0.0.0
+      --port 5000
+
+volumes:
+  pgdata:

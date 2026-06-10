@@ -1,0 +1,11 @@
+# BPR-MF — interaction-only floor (IDs only). General recommender, pairwise BPR loss,
+# has full_sort_predict (single matmul against all item embeddings → fast full ranking).
+model: BPR
+embedding_size: 64
+learning_rate: 0.001
+
+# BPR is PAIRWISE — it needs exactly one sampled negative per positive at train time.
+train_neg_sample_args:
+  distribution: uniform
+  sample_num: 1
+  dynamic: False
