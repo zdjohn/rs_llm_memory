@@ -29,9 +29,9 @@ def fit_weights(concepts: dict[str, np.ndarray],
                 breakpoints: dict[str, tuple[float, float, float]],
                 train_targets: np.ndarray,
                 *,
-                lr: float = 0.5,
-                max_iter: int = 200,
-                tol: float = 1e-5,
+                lr: float = 1.0,
+                max_iter: int = 400,
+                tol: float = 1e-4,
                 eps: float = 1e-3) -> np.ndarray:
     """Fit rule weights minimizing pairwise BPR loss; return ndarray length rules.N_RULES.
 

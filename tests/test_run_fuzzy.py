@@ -114,17 +114,19 @@ def integration_run_fuzzy_a0():  # [INTEGRATION]
 
 
 def integration_sanity_gate():  # [INTEGRATION]
-    from fuzzy.run_fuzzy import bpr_floor_ndcg3_from_mlflow, bpr_sanity_check
-    floor = bpr_floor_ndcg3_from_mlflow()
-    assert bpr_sanity_check(floor) is True
-    # A perturbed reference must flip the gate to a raise.
+    from fuzzy.run_fuzzy import bpr_sanity_check
+    # Self-contained: trains BPR on the SAME full-catalog universe the FIS uses, reloads the
+    # best checkpoint, and reproduces RecBole's native NDCG@3 through the adapter (no external
+    # floor lookup needed).
+    assert bpr_sanity_check() is True
+    # An explicit wrong reference on the same universe must flip the gate to a raise.
     raised = False
     try:
-        bpr_sanity_check(floor + 0.5)
+        bpr_sanity_check(0.0)
     except RuntimeError:
         raised = True
-    assert raised, "expected the sanity gate to raise on a perturbed reference"
-    print("[integration] sanity gate green then red-on-perturb OK")
+    assert raised, "expected the sanity gate to raise on a wrong reference"
+    print("[integration] sanity gate green then red-on-wrong-reference OK")
 
 
 def main() -> int:

@@ -278,10 +278,16 @@ def run_baseline_with_handles(model_name: str, *, dataset_name: str = "ml100k",
     model_yaml = REPO_ROOT / "configs" / f"{model_name.lower()}.yaml"
     if model_yaml.exists():
         config_files.append(str(model_yaml))
+    # Item-universe parity with the FIS: the FIS loads the .item file to build concepts, so it
+    # ranks over the FULL item catalog (1683). Every Track-A role MUST share that candidate set
+    # or the cold-item comparison is invalid (the sanity gate enforces this). Force the item
+    # file load even for ID-only BPR (BPR ignores the columns; only the candidate universe matters).
+    load_col = build_load_col(user_feats, item_feats)
+    load_col["item"] = ["item_id", "genre", "release_year"]
     config_dict = {
         "data_path": str(REPO_ROOT / "data"),
         "seed": 2020,
-        "load_col": build_load_col(user_feats, item_feats),
+        "load_col": load_col,
     }
     if quick:
         config_dict.update(epochs=1, stopping_step=1)
@@ -369,24 +375,37 @@ def assert_within_tolerance(reproduced_ndcg3: float, bpr_reference_ndcg3: float,
     return True
 
 
-def bpr_sanity_check(bpr_reference_ndcg3: float, tol: float = 1e-3, *,
+def bpr_sanity_check(bpr_reference_ndcg3: float | None = None, tol: float = 1e-3, *,
                      dataset_name: str = "ml100k") -> bool:
-    """HARD BLOCKER: push BPR's matrix through the SAME FISRecommender path; reproduce floor.
+    """HARD BLOCKER: prove the FISRecommender adapter reproduces RecBole's native BPR eval.
 
-    Trains BPR under `dataset_name`, extracts its full score matrix
-    (user_embedding @ item_embedding.T), evaluates it via the identical FISRecommender +
-    RecBole evaluator path used by run_fuzzy, and asserts the resulting NDCG@3 reproduces
-    `bpr_reference_ndcg3` within |Δ| < tol. Returns True on green; RAISES on red.
+    Trains BPR under `dataset_name` on the SAME item universe the FIS uses (`_setup_recbole`
+    loads the .item file -> full catalog), reloads the BEST checkpoint (mirroring run_one's
+    `load_best_model=True`), takes RecBole's native NDCG@3 as the reference, extracts the
+    best model's dense score matrix (user_embedding @ item_embedding.T), pushes it through the
+    identical FISRecommender + RecBole evaluator path used by run_fuzzy, and asserts the
+    reproduced NDCG@3 matches within |Δ| < tol. Returns True on green; RAISES on red.
+
+    The reference is computed self-consistently (same model, same universe) so the gate is not
+    confounded by item-universe or best-vs-last-epoch mismatches. Pass `bpr_reference_ndcg3`
+    explicitly only to assert against an externally recorded floor on the SAME universe.
     """
     from recbole.trainer import Trainer
     from recbole.utils import get_model, init_seed
 
     config, rb_dataset, train_data, valid_data, test_data = _setup_recbole(dataset_name)
-    # Train a BPR model on the SAME splits, then read its dense score matrix.
+    # Train a BPR model on the SAME splits/universe the FIS evaluates over.
     init_seed(config["seed"] + config["local_rank"], config["reproducibility"])
     bpr = get_model("BPR")(config, train_data._dataset).to(config["device"])
     trainer = Trainer(config, bpr)
     trainer.fit(train_data, valid_data, saved=True, show_progress=False)
+    # Reload the BEST checkpoint and take RecBole's NATIVE eval as the reference (this is the
+    # exact path run_one uses for the floor). evaluate(load_best_model=True) loads the best
+    # weights back into `bpr`, so the matrix extracted below is the best model, not last-epoch.
+    native = trainer.evaluate(test_data, load_best_model=True, show_progress=False)
+    native_ndcg3 = float(dict(native).get("ndcg@3", dict(native).get("NDCG@3", float("nan"))))
+    reference = native_ndcg3 if bpr_reference_ndcg3 is None else float(bpr_reference_ndcg3)
+
     bpr.eval()
     with torch.no_grad():
         user_e = bpr.user_embedding.weight  # (n_users, dim)
@@ -395,4 +414,4 @@ def bpr_sanity_check(bpr_reference_ndcg3: float, tol: float = 1e-3, *,
 
     reproduced, _ = _evaluate_matrix(matrix, config, train_data, test_data)
     repro_ndcg3 = float(reproduced.get("ndcg@3", reproduced.get("NDCG@3", float("nan"))))
-    return assert_within_tolerance(repro_ndcg3, bpr_reference_ndcg3, tol=tol)
+    return assert_within_tolerance(repro_ndcg3, reference, tol=tol)

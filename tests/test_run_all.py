@@ -49,7 +49,7 @@ def _install_stub_run_fuzzy(*, gate_raises: bool, call_log: list):
         call_log.append("floor_lookup")
         return 0.12
 
-    def bpr_sanity_check(floor, **kwargs):
+    def bpr_sanity_check(*args, **kwargs):
         call_log.append("sanity_gate")
         if gate_raises:
             raise RuntimeError("forced-red sanity gate")

@@ -192,13 +192,16 @@ def train_interaction_counts(train_data, config):
     inter = dataset.inter_feat
     users = inter[uid_field].numpy().astype(int)
     items = inter[iid_field].numpy().astype(int)
-    # Count per internal id with bincount, then map each distinct id back to its token once.
+    # Count per internal id with bincount, then map each id back to its token once.
     u_counts = np.bincount(users, minlength=dataset.num(uid_field))
     i_counts = np.bincount(items, minlength=dataset.num(iid_field))
-    user_counts = {str(dataset.id2token(uid_field, i)): int(n)
-                   for i, n in enumerate(u_counts) if n}
-    item_counts = {str(dataset.id2token(iid_field, i)): int(n)
-                   for i, n in enumerate(i_counts) if n}
+    # Include EVERY catalog entity, with count 0 for never-interacted ones, so items with zero
+    # train interactions (the truest cold items in the full-catalog universe) are classified as
+    # cold. Skip internal id 0 (the [PAD] sentinel), which is never a real entity.
+    user_counts = {str(dataset.id2token(uid_field, i)): int(u_counts[i])
+                   for i in range(1, dataset.num(uid_field))}
+    item_counts = {str(dataset.id2token(iid_field, i)): int(i_counts[i])
+                   for i in range(1, dataset.num(iid_field))}
     return user_counts, item_counts
 
 

@@ -67,7 +67,18 @@ def _slice_flat_keys(result: dict, config, k: int = 3) -> dict:
     train_data = handles["train_data"]
     test_data = handles["test_data"]
 
-    per_ndcg, per_hit, per_items = gm.collect_per_user_metrics(model, test_data, config, k=k)
+    # Per-user slice metrics require per-user full-ranking. General recommenders (BPR, FIS)
+    # implement full_sort_predict; context-aware models (DeepFM) do not, and the per-item
+    # fallback needs every item field. DeepFM is only a warm-regime reference (NOT part of the
+    # PASS gate, which compares A0/A1 vs the BPR floor on cold-item), so if slice extraction
+    # fails we keep the run's RecBole-native global metrics and skip slices with a warning
+    # rather than dropping the whole run.
+    try:
+        per_ndcg, per_hit, per_items = gm.collect_per_user_metrics(model, test_data, config, k=k)
+    except Exception as exc:  # noqa: BLE001 - degrade gracefully; global metrics still log
+        print(f"    [warn] slice metrics unavailable for this run ({type(exc).__name__}: {exc}); "
+              f"logging global metrics only.")
+        return {}
     user_counts, item_counts = gm.train_interaction_counts(train_data, config)
     sliced = gm.slice_metrics(per_ndcg, per_hit, per_items, user_counts, item_counts)
     return gm.flatten_slice_metrics(sliced, k=k)
@@ -121,15 +132,17 @@ def run_track_a(args) -> None:
     if args.dry_run:
         return
 
-    from fuzzy.run_fuzzy import (bpr_floor_ndcg3_from_mlflow, bpr_sanity_check,
-                                 run_baseline_with_handles, run_fuzzy)
+    from fuzzy.run_fuzzy import (bpr_sanity_check, run_baseline_with_handles, run_fuzzy)
 
     dataset = args.datasets[0]
 
     # --- HARD BLOCKER: BPR-reproduction sanity gate BEFORE any FIS run. ---
+    # Self-contained: trains BPR on the SAME full-catalog universe the FIS uses, reloads the
+    # best checkpoint, and asserts the FISRecommender adapter reproduces RecBole's native NDCG@3
+    # for that model/universe. No external floor lookup (the floor role below logs the
+    # comparison baseline on the same universe for decide.py).
     print("\n>>> sanity gate (BPR through the FISRecommender adapter)")
-    floor = bpr_floor_ndcg3_from_mlflow(tracking_uri=args.tracking_uri, dataset_name=dataset)
-    bpr_sanity_check(floor, dataset_name=dataset)  # raises on red -> aborts the process
+    bpr_sanity_check(dataset_name=dataset)  # raises on red -> aborts the process
 
     ok, failed = 0, 0
     for role, kind, target, uf, itf in TRACK_A_ROLES:
