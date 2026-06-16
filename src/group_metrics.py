@@ -139,14 +139,19 @@ def collect_per_user_metrics(model, test_data, config, k: int = 3):
             try:
                 scores = model.full_sort_predict(interaction)
             except NotImplementedError:
-                # Context-aware fallback (e.g. DeepFM): expand each user against every item
-                # and score per-item, mirroring trainer._full_sort_batch_eval.
-                from recbole.data.interaction import Interaction
+                # Context-aware fallback (e.g. DeepFM): expand each user against EVERY item with
+                # the FULL item-feature row joined (item_id + genre + release_year + ...), exactly
+                # as trainer._full_sort_batch_eval does. Joining only item_id makes models that
+                # read item side-info raise KeyError, so merge the whole item-feature table.
                 inter_len = len(interaction)
                 new_inter = interaction.repeat_interleave(tot_item_num)
-                item_ids = torch.arange(tot_item_num, device=device).repeat(inter_len)
-                new_inter.update(Interaction({iid_field: item_ids}))
-                scores = model.predict(new_inter)
+                item_feature = dataset.get_item_feature().to(device)
+                new_inter.update(item_feature.repeat(inter_len))
+                # Chunk the per-item predict to bound memory on the (n_users * n_items) expansion.
+                n_rows = len(new_inter)
+                step = max(tot_item_num, 4096)
+                parts = [model.predict(new_inter[s:s + step]) for s in range(0, n_rows, step)]
+                scores = torch.cat(parts) if len(parts) > 1 else parts[0]
 
             scores = scores.view(-1, tot_item_num).clone()
             scores[:, 0] = -np.inf
