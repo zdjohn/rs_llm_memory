@@ -21,7 +21,7 @@ from run_one import log_to_mlflow, run_one  # noqa: E402
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--model", default="BPR")
-    p.add_argument("--dataset", default="ml-100k")
+    p.add_argument("--dataset", default="ml100k")
     p.add_argument("--user_feats", choices=["on", "off"], default="off")
     p.add_argument("--item_feats", choices=["on", "off"], default="off")
     p.add_argument("--tracking_uri", default="http://localhost:5002")
@@ -34,7 +34,7 @@ def main() -> int:
     for suffix in ("inter", "user", "item"):
         f = REPO_ROOT / "data" / args.dataset / f"{args.dataset}.{suffix}"
         if not f.exists():
-            print(f"[FAIL] missing atomic file {f}. Run: python src/prepare_ml100k.py")
+            print(f"[FAIL] missing atomic file {f}. Run: python src/materialize_ml100k.py")
             return 1
     print("[ok] atomic files present")
 

@@ -6,9 +6,9 @@ hard-imports `ray`) so we control the train/eval boundary and what gets logged.
 
 Example
 -------
-    python src/run_one.py --model BPR    --dataset ml-100k --user_feats off --item_feats off
-    python src/run_one.py --model DeepFM  --dataset ml-100k --user_feats on  --item_feats on
-    python src/run_one.py --model BPR    --dataset ml-100k --quick --experiment smoke-test
+    python src/run_one.py --model BPR    --dataset ml100k --user_feats off --item_feats off
+    python src/run_one.py --model DeepFM  --dataset ml100k --user_feats on  --item_feats on
+    python src/run_one.py --model BPR    --dataset ml100k --quick --experiment smoke-test
 """
 from __future__ import annotations
 
@@ -80,7 +80,7 @@ def build_load_col(user_feats: bool, item_feats: bool) -> dict:
 
 def run_one(
     model: str,
-    dataset: str = "ml-100k",
+    dataset: str = "ml100k",
     *,
     data_path: str = str(REPO_ROOT / "data"),
     config_files: list[str] | None = None,
@@ -113,6 +113,8 @@ def run_one(
     if epochs is not None:
         config_dict["epochs"] = epochs
 
+    # Shared RecBole setup (Config/create_dataset/data_preparation/get_model/get_trainer):
+    # keep in sync with fuzzy.run_fuzzy._setup_recbole and run_baseline_with_handles.
     config = Config(model=model, dataset=dataset,
                     config_file_list=config_files, config_dict=config_dict)
 
@@ -194,7 +196,7 @@ def _format_metrics(test_result: dict) -> str:
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--model", required=True)
-    p.add_argument("--dataset", default="ml-100k")
+    p.add_argument("--dataset", default="ml100k")
     p.add_argument("--data_path", default=str(REPO_ROOT / "data"))
     p.add_argument("--config_files", nargs="*", default=None,
                    help="Override config file list (default: base.yaml + <model>.yaml)")
