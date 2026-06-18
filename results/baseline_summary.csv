@@ -1,3 +1,6 @@
-model,dataset,user_feats,item_feats,n_seeds,ndcg_at_3_mean,ndcg_at_3_std,hit_at_3_mean,hit_at_3_std,precision_at_3_mean,precision_at_3_std,train_time_sec_mean,train_time_sec_std
-BPR,ml-100k,off,off,1,0.0035,0.0,0.0096,0.0,0.0032,0.0,0.12072789669036865,0.005634903907775879
-DeepFM,ml-100k,on,on,1,0.0632,0.0,0.1592,0.0,0.0559,0.0,1.9246551990509033,0.0
+model,dataset,user_feats,item_feats,n_seeds,ndcg_at_3_mean,ndcg_at_3_std,hit_at_3_mean,hit_at_3_std,precision_at_3_mean,precision_at_3_std,train_time_sec_mean,train_time_sec_std,ndcg_at_3_slice_cold_item_mean,ndcg_at_3_slice_cold_item_std,hit_at_3_slice_cold_item_mean,hit_at_3_slice_cold_item_std
+BPR,ml100k,off,off,1,0.15325,0.0015499999999999958,0.3174,0.0032000000000000084,0.1288,0.0010999999999999899,4.727883160114288,0.9627244163066113,0.21299422417257624,0.0,0.432,0.0
+DeepFM,ml100k,off,off,1,0.0987,0.0,0.2176,0.0,0.0863,0.0,27.079750061035156,0.0,,,,
+DeepFM,ml100k,on,on,1,0.142,0.0,0.2803,0.0,0.1154,0.0,138.95334768295288,6.649859868552988,0.18677114904091024,0.0,0.368,0.0
+FIS-A0,ml100k,off,on,1,0.0179,0.0,0.0488,0.0,0.0166,0.0,0.2081059217453003,0.013460993766784668,0.031999999999999994,0.0,0.088,0.0
+FIS-A1,ml100k,off,on,1,0.0186,0.0,0.0488,0.0,0.0166,0.0,191.44321203231812,0.0,0.033877114904091024,0.0,0.088,0.0

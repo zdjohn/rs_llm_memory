@@ -19,9 +19,18 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 GROUP_KEYS = ["model", "dataset", "user_feats", "item_feats"]
 PARAM_COLS = ["model", "dataset", "seed", "user_feats", "item_feats",
               "embedding_size", "learning_rate", "epochs"]
+# Track-A slice metrics (group_metrics.flatten_slice_metrics -> sanitize_key). The literal
+# keys below MUST match group_metrics' emitted keys and decide.py's lookups verbatim.
+SLICE_METRIC_COLS = [
+    "ndcg_at_3_slice_all", "hit_at_3_slice_all",
+    "ndcg_at_3_slice_cold_user", "hit_at_3_slice_cold_user",
+    "ndcg_at_3_slice_cold_item", "hit_at_3_slice_cold_item",
+]
 METRIC_COLS = ["ndcg_at_3", "hit_at_3", "precision_at_3",
-               "ndcg_at_1", "hit_at_1", "precision_at_1", "train_time_sec"]
-SUMMARY_METRICS = ["ndcg_at_3", "hit_at_3", "precision_at_3", "train_time_sec"]
+               "ndcg_at_1", "hit_at_1", "precision_at_1", "train_time_sec",
+               *SLICE_METRIC_COLS]
+SUMMARY_METRICS = ["ndcg_at_3", "hit_at_3", "precision_at_3", "train_time_sec",
+                   "ndcg_at_3_slice_cold_item", "hit_at_3_slice_cold_item"]
 
 
 def tidy(runs: pd.DataFrame) -> pd.DataFrame:
