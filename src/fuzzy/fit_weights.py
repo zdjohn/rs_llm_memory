@@ -32,22 +32,26 @@ def fit_weights(concepts: dict[str, np.ndarray],
                 lr: float = 1.0,
                 max_iter: int = 400,
                 tol: float = 1e-4,
-                eps: float = 1e-3) -> np.ndarray:
-    """Fit rule weights minimizing pairwise BPR loss; return ndarray length rules.N_RULES.
+                eps: float = 1e-3,
+                score_fn=fis_score.score_matrix,
+                n_rules: int | None = None) -> np.ndarray:
+    """Fit rule weights minimizing pairwise BPR loss; return ndarray length `n_rules`.
 
     `train_targets`: (n_pairs, 3) int array of (user, pos_item, neg_item) from TRAIN only.
-    Optimizes via finite-difference gradient descent through `fis_score.score_matrix`.
-    Raises RuntimeError if the loss has not converged (|Δloss| < tol) within `max_iter`.
+    Optimizes via finite-difference gradient descent through `score_fn` (default the Track-A
+    `fis_score.score_matrix`; pass `rules_recency.score_matrix_recency` to fit the memory-decay
+    rule base). `n_rules` defaults to `rules.N_RULES` — set it to the length of the rule base
+    `score_fn` fires (e.g. `rules_recency.N_RULES`). Raises RuntimeError if not converged.
     """
     targets = np.asarray(train_targets)
     if targets.ndim != 2 or targets.shape[1] != 3:
         raise ValueError(f"train_targets must be (n_pairs, 3), got {targets.shape}")
 
-    n = rules.N_RULES
+    n = rules.N_RULES if n_rules is None else int(n_rules)
     w = np.ones(n, dtype=float)
 
     def loss_of(weights: np.ndarray) -> float:
-        matrix = fis_score.score_matrix(concepts, breakpoints, weights=weights)
+        matrix = score_fn(concepts, breakpoints, weights=weights)
         return _pairwise_bpr_loss(matrix, targets)
 
     prev_loss = loss_of(w)
