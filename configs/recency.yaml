@@ -1,0 +1,42 @@
+# configs/recency.yaml — the memory-decay experiment PROTOCOL VARIANT.
+#
+# This is documentation of the recency comparison's protocol, NOT a RecBole config: the
+# PPR-vs-memory-decay pipeline (src/run_recency.py) is self-contained (numpy/scipy/pandas/
+# networkx) and does its own splitting + evaluation (Option E1), so it does not load base.yaml.
+# base.yaml stays FROZEN for the Track-A/baseline RecBole runs.
+#
+# The single value RecBole still provides is the adapter sanity gate (bpr_sanity_check), run
+# optionally via `run_recency.py --sanity_gate` where RecBole is installed.
+
+dataset:
+  # Amazon Reviews 2023, a mid-size category (real multi-year timestamps -> genuine volatility).
+  # Build atomic files first: `python src/prepare_amazon.py --category <Category>`.
+  # ml100k is the built-in dry-run target (short 7-month window; recency signal is weak there).
+  source: amazon_2023
+  category: Video_Games          # default suggestion; confirm active-user density at build time
+  atomic_inter: data/amazon_video_games/amazon_video_games.inter
+  pos_threshold: 4.0             # rating >= 4 counts as a positive (mirrors the ML protocol)
+
+split:
+  n_active: 500                  # the 500 most-active users by #positives (tie-break count desc, id asc)
+  cohort: {val: 250, test: 250}  # random 50/50 user split; tune on VAL, report on TEST
+  seed: 2020
+  within_user: leave_last_1      # temporal: single most-recent positive is the held-out target
+
+fis:
+  variables: [relevance, recency, volatility, frequency]   # each low/medium/high
+  breakpoints: history_quartiles                            # q25/q50/q75 from history-only values
+  outputs: {suppress: 0.1, neutral: 0.5, surface: 0.9}      # centroid defuzz (== fis_score.CENTROIDS)
+  lambda_sweep: [0.0, 0.001, 0.005, 0.02, 0.1]              # recency decay per DAY; tuned on VAL (max MRR)
+  volatility: timestamp_burstiness   # 1 - normalized item lifespan (burst -> high, evergreen -> low)
+  a1_weights: pairwise_bpr_on_val    # fit_weights over VAL history pairs (A1); A0 = uniform weights
+
+baseline:
+  model: PPR                     # networkx.pagerank, personalized on history items; time-agnostic foil
+  alpha: 0.85
+
+eval:
+  metrics: [mrr, hit_at_1, hit_at_3, hit_at_10]  # leave-last-1 => Precision & NDCG@1 are redundant
+  tie_handling: expected_random  # expected rank / Hit@k under uniform tie-breaking (fair for discrete FIS)
+  report_cohort: test
+  verdict: FIS beats PPR on BOTH mrr AND hit_at_10   # decide_recency.py

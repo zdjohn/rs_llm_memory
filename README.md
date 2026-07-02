@@ -6,6 +6,8 @@ both sides** (user demographics + item metadata) and tracking per-group fairness
 **RecBole 1.2.0**, tracked in **MLflow** (Docker Compose: Postgres + server).
 
 See [`experiment_plan.md`](experiment_plan.md) for the full design, hypotheses, and matrix.
+To run the PPR vs. memory-decay (recency-weighted) FIS experiment locally, see
+[`RUNBOOK_recency.md`](RUNBOOK_recency.md).
 
 ## Status
 
